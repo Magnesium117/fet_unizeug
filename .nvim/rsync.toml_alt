@@ -1,0 +1,2 @@
+# remote_path="/srv/http/"
+# remote_path="dev@10.0.0.25:/var/www/html/"

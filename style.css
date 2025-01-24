@@ -1,0 +1,74 @@
+html,
+body {
+  height: 100vh;
+  width: 100vw;
+}
+
+body {
+  overflow: hidden;
+  background-color: slategrey;
+}
+
+.right {
+  height: 100%;
+  margin: 0;
+  width: 75vw;
+  float: right;
+  background-color: navy;
+}
+
+.left {
+  background-color: blueviolet;
+  height: 100%;
+  float: left;
+}
+
+span {
+  color: lightgray;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.fullsize {
+  height: 100%;
+  margin: 0;
+}
+
+.buttons {
+  display: flex;
+  justify-content: space-between;
+}
+
+.main {
+  height: 100vh;
+  width: 100vw;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+#cnvdiv {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  /*display: flex;*/
+  /*text-align: center;*/
+  /*justify-content: center;*/
+}
+
+.stack {
+  position: relative;
+  height: 100%;
+  /*text-align: center;*/
+  /*float: right;*/
+  /*margin-right: 0;*/
+  /*margin-left: auto;*/
+  /*display: block;*/
+}
+
+.stack>canvas {
+  position: absolute;
+  /*display: block;*/
+  /*display: inline;*/
+  left: 0;
+  top: 0;
+}

@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Unizeug uploader</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.4.456/pdf.min.js"></script>
+  <script src="app.js" defer></script>
+  <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="Unizeug" />
+  <link rel="manifest" href="/favicon/site.webmanifest" />
+</head>
+
+<body>
+  <div class="main">
+    <div class="left" id="controldiv">
+      <div id="fileupload">
+        <form id="uploadform">
+          <label for="filepicker">Choose a pdf file</label>
+          <input type="file" id="filepicker" />
+          <button type="submit" id="upload" method="POST">Upload</button>
+        </form>
+      </div>
+      <div id="submitdiv">
+        <form id="submitform" ,onsubmit="submitFile(event)">
+          <label for="lva">Lehrveranstaltung:</label>
+          <input type="text" id="lva" name="lva" placeholder="Lehrveranstaltung" /><br />
+          <label for="prof">Vortragende*r:</label>
+          <input type="text" id="prof" name="prof" placeholder="Vortragende*r" /><br />
+          <label for="name">Ding:</label>
+          <input type="text" id="name" name="fname" placeholder="Prüfung" /><br />
+          <label for="sem">Semester:</label>
+          <input type="text" id="sem" name="sem" placeholder="2024W" /><br />
+          <input type="radio" id="pruefung" name="stype" value="pruefung" checked="checked" />
+          <label for="pruefung">Prüfung</label><br />
+          <input type="radio" id="klausur" name="stype" value="klausur" />
+          <label for="klausur">Klausur</label><br />
+          <input type="radio" id="uebung" name="stype" value="uebung" />
+          <label for="uebung">Übung</label><br />
+          <input type="radio" id="labor" name="stype" value="labor" />
+          <label for="labor">Labor</label><br />
+          <input type="radio" id="unterlagen" name="stype" value="unterlagen" />
+          <label for="unterlagen">Unterlagen</label><br />
+          <input type="radio" id="zusammenfassungen" name="stype" value="zusammenfassungen" />
+          <label for="zusammenfassungen">Zusammenfassungen</label><br />
+          <input type="radio" id="multimedia" name="stype" value="multimedia" />
+          <label for="multimedia">Multimedia</label><br />
+          <label for="date">Datum</label>
+          <input type="date" id="date" name="date" /><br />
+          <button type="submit" id="send">Senden</button>
+        </form>
+      </div>
+    </div>
+    <div class="right" id="rightdiv">
+      <div class="buttons" id="buttonsdiv">
+        <button id="prev">Prev</button><button id="next">Next</button>
+        <div>
+          <span id="npage"></span>
+          <span>/</span>
+          <span id="npages"></span>
+        </div>
+        <button id="clr">Clear Page</button><button id="ca">Claer All</button>
+      </div>
+      <div id="cnvdiv">
+        <div class="stack" id="cnvcont">
+          <canvas id="cnv"></canvas>
+          <canvas id="drw_cnv"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
