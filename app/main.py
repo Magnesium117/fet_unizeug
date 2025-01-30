@@ -1,15 +1,16 @@
 from typing import Annotated
 from typing import List, Dict, Tuple
-from datetime import date
 from fastapi import FastAPI, File, UploadFile, Request, Form
 from fastapi.staticfiles import StaticFiles
 import pymupdf
-import pdf2image
 import json
+import os
 
 app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="./"), name="static")
+
+locpaths = ["./VO_Mathematik_3.pdf"]  # replace this with a database
 
 
 @app.post("/files/")
@@ -21,10 +22,16 @@ async def create_file(file: Annotated[bytes, File()]):
 async def create_upload_file(file: UploadFile):
     content = await file.read()
     filename = file.filename if file.filename is not None else "None"
-    with open("./app/files/" + filename, "wb") as f:
+    locpath = "./app/files/" + filename
+    locpaths.append(locpath)
+    with open(locpath, "wb") as f:
         f.write(content)
     app.mount("/files", StaticFiles(directory="./app/files/"), name="files")
-    return {"filename": filename, "path": "/files/" + filename}
+    return {
+        "filename": filename,
+        "path": "/files/" + filename,
+        "fid": len(locpaths) - 1,
+    }
 
 
 @app.post("/submit/")
@@ -32,6 +39,7 @@ async def get_submittion(
     lva: Annotated[str, Form()],  # LVA Name and Number
     prof: Annotated[str, Form()],  # Vortragender
     fname: Annotated[str, Form()],  # Path to pdf File
+    fileId: Annotated[int, Form()],
     sem: Annotated[str, Form()],  # Semester eg. 2024W
     stype: Annotated[str, Form()],  # Type of File eg. Prüfung
     ex_date: Annotated[str, Form()],  # Date of Exam only when type is exam
@@ -45,7 +53,7 @@ async def get_submittion(
     print(lva, prof, fname, stype, sem, ex_date, rects, pagescales)
     rects_p = json.loads(rects)
     scales_p = json.loads(pagescales)
-    censor_pdf(fname, "./app/files/censored.pdf", rects_p, scales_p)
+    censor_pdf(locpaths[fileId], "./app/files/censored.pdf", rects_p, scales_p)
     return {"done": "ok"}
 
 
