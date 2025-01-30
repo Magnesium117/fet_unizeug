@@ -163,8 +163,8 @@ class PDFDocument {
   }
   get paramRects() {
     let prects = [];
-    for (var k = 0; k < this.rects.length; k++) {
-      prects[k] = [];
+    for (var k = 1; k < this.rects.length; k++) {
+      prects[k - 1] = [];
       //console.log(this.rects[k]);
       if (this.rects[k] === undefined) {
         continue;
@@ -174,7 +174,7 @@ class PDFDocument {
       let len = this.rects[k].length;
       for (var i = 0; i < len; i++) {
         //console.log(this.rects[k][i]);
-        prects[k].push([this.rects[k][i].makeTuple()]);
+        prects[k - 1].push(this.rects[k][i].makeTuple());
         //console.log(prects[k][i]);
       }
     }
@@ -263,7 +263,7 @@ function submitPdf(eve) {
   var formdata = new FormData(eve.target);
   console.log(doc.paramRects);
   formdata.append("rects", JSON.stringify(doc.paramRects));
-  formdata.append("pagescales", JSON.stringify(doc.pagescales));
+  formdata.append("pagescales", JSON.stringify(doc.pagescales.slice(1)));
   formdata.append("fname", doc.fname);
   console.log(formdata);
   submitForm(formdata);
