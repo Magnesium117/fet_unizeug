@@ -340,7 +340,10 @@ function initListeners() {
   });
 }
 const startPdf = () => {
-  doc = new PDFDocument("./VO_Mathematik_3.pdf", 0);
+  doc = new PDFDocument(
+    "./files/b78c869f-e0bb-11ef-9b58-84144d05d665",
+    "b78c869f-e0bb-11ef-9b58-84144d05d665",
+  );
   //pdf = new PDFView("./VO_Mathematik_3.pdf");
   initDraw();
   initUpload();

@@ -1,21 +1,52 @@
 from typing import Annotated
 from typing import List, Dict, Tuple
-from fastapi import FastAPI, File, UploadFile, Request, Form
+from fastapi import FastAPI, File, HTTPException, UploadFile, Request, Form
+from fastapi.responses import FileResponse
+
+# import fastapi
 from fastapi.staticfiles import StaticFiles
 import pymupdf
 import json
-import os
+
+# import os
+import mariadb
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="./"), name="static")
+app.mount("/favicon", StaticFiles(directory="./favicon"), name="favicon")
+app.mount("/static", StaticFiles(directory="./static"), name="static")
+db = mariadb.connect(
+    host="localhost", user="wildserver", password="DBPassword", database="Unizeug"
+)
 
-locpaths = ["./VO_Mathematik_3.pdf"]  # replace this with a database
+
+# cur = db.cursor()
+# cur.execute("select * from FIP;")
+# for l in cur:
+#     print(l)
+# locpaths = ["./VO_Mathematik_3.pdf"]  # replace this with a database
+@app.get("/")
+async def get_index():
+    return FileResponse("./index.html")
 
 
-@app.post("/files/")
-async def create_file(file: Annotated[bytes, File()]):
-    return {"filesize": len(file)}
+@app.get("/files/{file_id}")
+async def get_file(file_id: str):
+    cur = db.cursor()
+    try:
+        cur.execute("Select filename from FIP where id=?", (file_id,))
+    except mariadb.Error as e:
+        print(f"Mariadb Error: {e}")
+        raise HTTPException(
+            status_code=500, detail="Somethings wrong with the database"
+        )
+    filename = cur.fetchone()[0]
+    return FileResponse(f"./app/files/{filename}")
+
+
+# @app.post("/files/")
+# async def create_file(file: Annotated[bytes, File()]):
+#     return {"filesize": len(file)}
 
 
 @app.post("/uploadfile/")
@@ -23,14 +54,31 @@ async def create_upload_file(file: UploadFile):
     content = await file.read()
     filename = file.filename if file.filename is not None else "None"
     locpath = "./app/files/" + filename
-    locpaths.append(locpath)
+    # locpaths.append(locpath)
+    cur = db.cursor()
+    try:
+        cur.execute("Insert Into FIP (filename) Values(?)", (filename,))
+    except mariadb.Error as e:
+        print(f"Error: {e}")
+        raise HTTPException(
+            status_code=500, detail="Somethings wrong with the database"
+        )
+    try:
+        cur.execute("Select id From FIP where filename=?", (filename,))
+    except mariadb.Error as e:
+        print(f"Error: {e}")
+        raise HTTPException(
+            status_code=500, detail="Somethings wrong with the database"
+        )
+    id = cur.fetchone()[0]
     with open(locpath, "wb") as f:
         f.write(content)
-    app.mount("/files", StaticFiles(directory="./app/files/"), name="files")
+    # app.mount("/files", StaticFiles(directory="./app/files/"), name="files")
+    db.commit()
     return {
         "filename": filename,
-        "path": "/files/" + filename,
-        "fid": len(locpaths) - 1,
+        "path": "/files/" + id,
+        "fid": id,
     }
 
 
@@ -39,7 +87,7 @@ async def get_submittion(
     lva: Annotated[str, Form()],  # LVA Name and Number
     prof: Annotated[str, Form()],  # Vortragender
     fname: Annotated[str, Form()],  # Path to pdf File
-    fileId: Annotated[int, Form()],
+    fileId: Annotated[str, Form()],
     sem: Annotated[str, Form()],  # Semester eg. 2024W
     stype: Annotated[str, Form()],  # Type of File eg. Prüfung
     ex_date: Annotated[str, Form()],  # Date of Exam only when type is exam
@@ -53,7 +101,16 @@ async def get_submittion(
     print(lva, prof, fname, stype, sem, ex_date, rects, pagescales)
     rects_p = json.loads(rects)
     scales_p = json.loads(pagescales)
-    censor_pdf(locpaths[fileId], "./app/files/censored.pdf", rects_p, scales_p)
+    cur = db.cursor()
+    try:
+        cur.execute("Select filename from FIP where id=?", (fileId,))
+    except mariadb.Error as e:
+        print(f"Mariadb Error: {e}")
+        raise HTTPException(
+            status_code=500, detail="Somethings wrong with the database"
+        )
+    filepath = "./app/files/" + cur.fetchone()[0]
+    censor_pdf(filepath, "./app/files/censored.pdf", rects_p, scales_p)
     return {"done": "ok"}
 
 
