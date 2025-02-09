@@ -8,8 +8,10 @@ from fastapi.staticfiles import StaticFiles
 import pymupdf
 import json
 
+
 # import os
 import mariadb
+
 
 app = FastAPI()
 
