@@ -20,6 +20,16 @@ app.mount("/static", StaticFiles(directory="./static"), name="static")
 db = mariadb.connect(
     host="localhost", user="wildserver", password="DBPassword", database="Unizeug"
 )
+CATEGORIES = [
+    "Prüfungen",
+    "Klausuren",
+    "Übungen",
+    "Labore",
+    "Unterlagen",
+    "Zusammenfassungen",
+    "Multimedia",
+]
+SUBCAT_CATEGORIES = ["Klausuren", "Übungen", "Labore"]
 
 
 # cur = db.cursor()
@@ -91,7 +101,7 @@ async def get_submittion(
     fname: Annotated[str, Form()],  # Path to pdf File
     fileId: Annotated[str, Form()],
     sem: Annotated[str, Form()],  # Semester eg. 2024W
-    stype: Annotated[str, Form()],  # Type of File eg. Prüfung
+    stype: Annotated[str, Form()],  # Type of File eg. Prüfung=>0
     ex_date: Annotated[str, Form()],  # Date of Exam only when type is exam
     rects: Annotated[
         str, Form()
