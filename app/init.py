@@ -73,11 +73,11 @@ def get_dirstruct():
         if regex.search(fname):
             continue
         # print(fname)
-        lvid = re.search(r"\d{3}.\d{3}", fname)
-        # print(lvid)
+        lvid = re.search(r"[a-zA-Z0-9]{3}\.[a-zA-Z0-9]{3}", fname)
+        print(lvid)
         if lvid is None:
             continue
-        lvid = int(lvid.group()[:3] + lvid.group()[4:])
+        lvid = lvid.group()[:3] + lvid.group()[4:]
         name = fname[:-8]
         # print(name)
         # print(lvid)
