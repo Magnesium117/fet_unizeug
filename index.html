@@ -6,6 +6,7 @@
   <link rel="stylesheet" href="static/style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.4.456/pdf.min.js"></script>
   <script src="static/app.js" defer></script>
+  <script src="static/autocomplete.js" defer></script>
   <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
   <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
   <link rel="shortcut icon" href="/favicon/favicon.ico" />
@@ -27,10 +28,16 @@
       <div id="submitdiv">
         <form id="submitform" ,onsubmit="submitFile(event)">
           <label for="lva">Lehrveranstaltung:</label>
-          <input type="text" id="lva" name="lva" placeholder="Lehrveranstaltung" /><br />
+          <div class="autocomplete">
+            <input type="text" id="lva" name="lva" placeholder="Lehrveranstaltung" autocomplete="off" /><br />
+          </div>
+          <br />
           <label for="prof">Vortragende*r:</label>
-          <input type="text" id="prof" name="prof" placeholder="Vortragende*r" /><br />
-          <label for="name">Ding:</label>
+          <div class="autocomplete">
+            <input type="text" id="prof" name="prof" placeholder="Vortragende*r" autocomplete="off" /><br />
+          </div>
+          <br />
+          <label for="name">Name:</label>
           <input type="text" id="name" name="fname" placeholder="Prüfung" /><br />
           <label for="sem">Semester:</label>
           <input type="text" id="sem" name="sem" placeholder="2024W" /><br />
@@ -48,6 +55,12 @@
           <label for="zusammenfassungen">Zusammenfassung</label><br />
           <input type="radio" id="multimedia" name="stype" value="6" />
           <label for="multimedia">Multimedia</label><br />
+          <label for="subcat">Veranstaltung</label>
+          <div class="autocomplete">
+            <input type="text" id="subcat" name="subcat" placeholder="Klausur 1" autocomplete="off" />
+          </div>
+          <br />
+          <br />
           <label for="date">Datum</label>
           <input type="date" id="date" name="ex_date" /><br />
           <button type="submit" id="send">Senden</button>

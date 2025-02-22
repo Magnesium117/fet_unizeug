@@ -59,7 +59,9 @@ async def get_file(file_id: str):
 
 
 @app.get("/search/lva")
-async def search_lva(searchterm: str, searchlim: int = 10) -> List[Dict[str, str]]:
+async def search_lva(
+    searchterm: str, searchlim: int = 10
+) -> List[Dict[str, int | str]]:
     res = []
     cur = db.cursor(dictionary=True)
     if await is_LVID(searchterm):
@@ -69,10 +71,15 @@ async def search_lva(searchterm: str, searchlim: int = 10) -> List[Dict[str, str
         res = cur.fetchall()
     else:
         cur.execute(
-            "SELECT lvid,lvname FROM LVAs WHERE lvname LIKE ?",
-            ("%" + searchterm + "%",),
+            "SELECT id,lvid,lvname FROM LVAs WHERE lvname LIKE ?",
+            (searchterm + "%",),
         )
         res = cur.fetchall()
+        cur.execute(
+            "SELECT id,lvid,lvname FROM LVAs WHERE lvname LIKE ?",
+            ("%" + searchterm + "%",),
+        )
+        res = remove_duplicates(res + cur.fetchall())
     if searchlim == 0:
         return res
     else:
@@ -81,13 +88,14 @@ async def search_lva(searchterm: str, searchlim: int = 10) -> List[Dict[str, str
 
 @app.get("/search/prof")
 async def search_profs(
-    searchterm: str = "", lvid: str = "", searchlim: int = 10
+    searchterm: str = "", lid: int | None = None, searchlim: int = 10
 ) -> List[Dict[str, str | int]]:
     res = []
+    zw = []
     cur = db.cursor(dictionary=True)
-    if lvid != "":
-        cur.execute("SELECT id FROM LVAs WHERE LVId=?", (lvid,))
-        lid = cur.fetchall()[0]["id"]
+    if lid is not None:
+        # cur.execute("SELECT id FROM LVAs WHERE LVId=?", (lvid,))
+        # lid = cur.fetchall()[0]["id"]
         cur.execute(
             "SELECT Profs.id,Profs.name FROM Profs LEFT JOIN LPLink ON Profs.id=LPLink.pid WHERE name like ? AND lid=?",
             ("%" + searchterm + "%", lid),
@@ -115,7 +123,7 @@ async def search_profs(
 )  # NOT FULLY TESTED DUE TO INCOMPLETE DATABASE DUE TO INACCEPTABLE FOLDERSTRUCTURE
 async def search_subcats(
     searchterm: str = "",
-    lvid: str = "",
+    lid: int | None = None,
     pid: int | None = None,
     cat: int | None = None,
     searchlim: int = 10,
@@ -123,16 +131,16 @@ async def search_subcats(
     res = []
     rest = []
     cur = db.cursor(dictionary=True)
-    if not (lvid == "" or pid is None or cat is None):  # Rest is available
-        cur.execute("SELECT id FROM LVAs WHERE LVId=?", (lvid,))
-        lid = cur.fetchall()[0]["id"]
+    if not (lid is None or pid is None or cat is None):  # Rest is available
+        # cur.execute("SELECT id FROM LVAs WHERE LVId=?", (lvid,))
+        # lid = cur.fetchall()[0]["id"]
         cur.execute(
             "SELECT id,name FROM SubCats WHERE lid=? AND pid=? AND cat=?",
             (lid, pid, cat),
         )
         rest = cur.fetchall()
     if searchterm != "":  # searchterm is available
-        if not (lvid == "" or pid is None or cat is None):
+        if not (lid is None or pid is None or cat is None):
             cur.execute(
                 "SELECT id,name FROM SubCats WHERE lid=? AND pid=? AND cat=? AND name LIKE ?",
                 (lid, pid, cat, "%" + searchterm + "%"),
