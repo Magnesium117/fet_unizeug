@@ -60,7 +60,12 @@ function autocomplete(inp, type) {
     }
     for (i = 0; i < arr.length; i++) {
       if (type === "lva") {
-        iname = arr[i]["lvid"] + " " + arr[i]["lvname"];
+        iname =
+          arr[i]["lvid"].slice(0, 3) +
+          "." +
+          arr[i]["lvid"].slice(3, 6) +
+          " " +
+          arr[i]["lvname"];
       } else {
         iname = arr[i]["name"];
       }
@@ -77,7 +82,12 @@ function autocomplete(inp, type) {
         /*insert the value for the autocomplete text field:*/
         if (type === "lva") {
           const idx = this.getElementsByTagName("input")[0].value;
-          inp.value = arr[idx]["lvid"] + " " + arr[idx]["lvname"];
+          inp.value =
+            arr[idx]["lvid"].slice(0, 3) +
+            "." +
+            arr[idx]["lvid"].slice(3, 6) +
+            " " +
+            arr[idx]["lvname"];
           lid = arr[idx]["id"];
         } else if (type === "prof") {
           const idx = this.getElementsByTagName("input")[0].value;
