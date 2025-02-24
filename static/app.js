@@ -111,8 +111,13 @@ class Rectangle {
   }
 }
 class PDFDocument {
-  constructor(filename, fileID) {
-    this.pdf = new PDFView(filename);
+  constructor(filename, fileID, filetype) {
+    if (filetype === "pdf") {
+      this.pdf = new PDFView(filename);
+    } else {
+      this.pdf = new PDFView("/files/unsupported");
+    }
+    this.filetype = filetype;
     this.fname = filename;
     this.fID = fileID;
     this.rects = [];
@@ -266,7 +271,8 @@ function submitPdf(eve) {
   formdata.append("rects", JSON.stringify(doc.paramRects));
   formdata.append("pagescales", JSON.stringify(doc.pagescales.slice(1)));
   formdata.append("fileId", doc.fID);
-  formdata.append("filename", doc.filename);
+  //formdata.append("filename", doc.filename);
+  formdata.append("ftype", doc.filetype);
   console.log(formdata);
   submitForm(formdata);
 }
@@ -312,7 +318,12 @@ async function uploadFile(formData) {
       console.log(response);
       delete doc.pdf;
       delete doc;
-      doc = new PDFDocument(responseJSON.path, responseJSON.fid);
+      document.getElementById("fname").value = responseJSON.filename;
+      doc = new PDFDocument(
+        responseJSON.path,
+        responseJSON.fid,
+        responseJSON.filetype,
+      );
     } else {
       console.log("upload failed");
     }
@@ -343,6 +354,7 @@ const startPdf = () => {
   doc = new PDFDocument(
     "./files/b78c869f-e0bb-11ef-9b58-84144d05d665",
     "b78c869f-e0bb-11ef-9b58-84144d05d665",
+    "pdf",
   );
   //pdf = new PDFView("./VO_Mathematik_3.pdf");
   initDraw();

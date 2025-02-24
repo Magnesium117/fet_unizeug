@@ -11,7 +11,7 @@ import json
 import re
 
 
-# import os
+import os
 import mariadb
 
 
@@ -32,6 +32,10 @@ CATEGORIES = [
     "Multimedia",
 ]
 SUBCAT_CATEGORIES = ["Klausuren", "Übungen", "Labore"]
+SUBCAT_CATEGORIES_I = [1, 2, 3]
+EX_DATE_CATEGORIES = ["Prüfungen", "Klausuren"]
+EX_DATE_CATEGORIES_I = [0, 1]
+UNIZEUG_PATH = "./app/dest/"
 
 
 # cur = db.cursor()
@@ -46,6 +50,10 @@ async def get_index():
 
 @app.get("/files/{file_id}")
 async def get_file(file_id: str):
+    if file_id == "unsupported":
+        return FileResponse(".app/files/unsupported.pdf")
+    if file_id == "empty":
+        return FileResponse(".app/files/empty.pdf")
     cur = db.cursor()
     try:
         cur.execute("Select filename from FIP where id=?", (file_id,))
@@ -188,22 +196,29 @@ async def create_upload_file(file: UploadFile):
         f.write(content)
     # app.mount("/files", StaticFiles(directory="./app/files/"), name="files")
     db.commit()
+    fname = "".join(filename.split(".")[0:-1])
+    ftype = filename.split(".")[-1]
     return {
-        "filename": filename,
+        "filename": fname,
+        "filetype": ftype,
         "path": "/files/" + id,
         "fid": id,
     }
 
 
 @app.post("/submit/")
-async def get_submittion(
+async def get_submission(
     lva: Annotated[str, Form()],  # LVA Name and Number
     prof: Annotated[str, Form()],  # Vortragender
     fname: Annotated[str, Form()],  # Path to pdf File
-    fileId: Annotated[str, Form()],
+    fileId: Annotated[str, Form()],  # UUID of file in FIP table
     sem: Annotated[str, Form()],  # Semester eg. 2024W
     stype: Annotated[str, Form()],  # Type of File eg. Prüfung=>0
-    ex_date: Annotated[str, Form()],  # Date of Exam only when type is exam
+    subcat: Annotated[str, Form()],  # Subcategory of file if the category has subcats
+    ex_date: Annotated[
+        str, Form()
+    ],  # Date of Exam only when type is exam(Klausur/Prüfung)
+    ftype: Annotated[str, Form()],  # type of File
     rects: Annotated[
         str, Form()
     ],  # Rechtangles # List[List[Tuple[float, float, float, float]]],
@@ -211,7 +226,7 @@ async def get_submittion(
         str, Form()
     ],  # Scales of Pages  # Annotated[List[Dict[str, float]], Form()],
 ):
-    print(lva, prof, fname, stype, sem, ex_date, rects, pagescales)
+    print(lva, prof, fname, stype, subcat, sem, ex_date, rects, pagescales)
     rects_p = json.loads(rects)
     scales_p = json.loads(pagescales)
     cur = db.cursor()
@@ -223,7 +238,11 @@ async def get_submittion(
             status_code=500, detail="Somethings wrong with the database"
         )
     filepath = "./app/files/" + cur.fetchone()[0]
-    censor_pdf(filepath, "./app/files/censored.pdf", rects_p, scales_p)
+    try:
+        dest = make_savepath(lva, prof, stype, subcat, sem, ex_date, fname, ftype)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    censor_pdf(filepath, dest, rects_p, scales_p)
     return {"done": "ok"}
 
 
@@ -285,6 +304,132 @@ def remove_duplicates(
         ids.append(result["id"])
         res.append(result)
     return res
+
+
+def make_savepath(
+    lva: str,
+    prof: str,
+    cat: str,
+    subcat: str,
+    sem: str,
+    ex_date: str,
+    fname: str,
+    ftype: str,
+) -> str:
+    lv = get_lvpath(lva)
+    lvpath = lv[1] + "/"
+    pf = get_profpath(prof, lv[0])
+    pfpath = pf[1] + "/"
+    catpath = CATEGORIES[int(cat)] + "/"
+    scpath = ""
+    if int(cat) in SUBCAT_CATEGORIES_I:
+        sc = get_subcatpath(subcat, int(cat), pf[0], lv[0])
+        scpath = sc[1] + "/"
+    savepath = UNIZEUG_PATH + lvpath + pfpath + catpath + scpath
+    os.makedirs(savepath)
+    filename = sem + "_"
+    if int(cat) in EX_DATE_CATEGORIES_I:
+        _, mm, dd = ex_date.split("-")
+        filename += mm + "_" + dd + "_"
+    filename += fname + "." + ftype
+    return savepath + filename
+
+
+def get_lvpath(lva: str) -> Tuple[int, str]:
+    cur = db.cursor()
+    lvid = re.search(r"[a-zA-Z0-9]{3}\.[a-zA-Z0-9]{3}", lva)
+    if lvid is not None:
+        cur.execute(
+            "SELECT id,lvpath FROM LVAs WHERE lvid=?",
+            (lvid.group()[:3] + lvid.group()[4:],),
+        )
+        res = cur.fetchone()
+        if res is not None:
+            return res
+        else:
+            return makenew(lva, "LVAs")
+    else:
+        cur.execute("SELECT id,lvpath FROM LVAs WHERE lvname=?", (lva,))
+        res = cur.fetchone()
+        if res is not None:
+            return res
+        else:
+            return makenew(lva, "LVAs")
+
+
+def get_profpath(prof: str, lid: int) -> Tuple[int, str]:
+    cur = db.cursor()
+    prof = prof.replace("_", " ")
+    cur.execute("SELECT id,name FROM Profs WHERE name=?", (prof,))
+    res = cur.fetchall()
+    if res is not None:
+        ret = (res[0][0], res[0][1].replace(" ", "_"))
+        cur.execute("SELECT * FROM LPLink WHERE LId=? AND PId=?", (lid, ret[0]))
+        if cur.fetchall() is None:
+            linkLP(lid, ret[0])
+        return ret
+    fname, lname = prof.split(" ")
+    cur.execute("SELECT id,name FROM Profs WHERE name like ?", (lname + " " + fname,))
+    res = cur.fetchall()
+    if res is not None:
+        ret = (res[0][0], res[0][1].replace(" ", "_"))
+        cur.execute("SELECT * FROM LPLink WHERE LId=? AND PId=?", (lid, ret[0]))
+        if cur.fetchall() is None:
+            linkLP(lid, ret[0])
+        return ret
+    ret = makenew(prof, "Profs")
+    linkLP(lid, ret[0])
+    return ret
+
+
+def get_subcatpath(subcat: str, cat: int, pid: int, lid: int) -> Tuple[int, str]:
+    cur = db.cursor()
+    cur.execute(
+        "SELECT id,name FROM SubCats WHERE LId=? AND PId=? AND cat=? AND name=?",
+        (lid, pid, cat, subcat),
+    )
+    res = cur.fetchone()
+    if res is None:
+        return makenew(subcat, "SubCats", LId=lid, PId=pid, cat=cat)
+    return res
+
+
+def makenew(input: str, table: str, **kwargs) -> Tuple[int, str]:
+    cur = db.cursor()
+    if table == "LVAs":
+        lvaid = re.search(r"[a-zA-Z0-9]{3}\.[a-zA-Z0-9]{3}", input)
+        if lvaid is None:
+            raise ValueError("LVA needs to have a LVA ID to be inserted into the table")
+        lvid = lvaid.group()[:3] + lvaid.group()[4:]
+        lvname = re.sub(r"[_ -]*[a-zA-Z0-9]{3}\.[a-zA-Z0-9]{3}[_ -]*", "", input)
+        lvpath = lvname + "_" + lvaid.group()
+        cur.execute(
+            "INSERT INTO LVAs(lvid,lvname,lvpath) VALUES(?,?,?)", (lvid, lvname, lvpath)
+        )
+        cur.execute("SELECT id,lvpath FROM LVAs WHERE lvid=?", (lvid,))
+        db.commit()
+        return cur.fetchone()
+    querry = "INSERT INTO " + table + "(name"
+    values = [input]
+    nvals = 0
+    for k, v in kwargs.items():
+        values.append(v)
+        querry += "," + k
+        nvals += 1
+    querry += ") VALUES(?" + nvals * ",?" + ")"
+    cur.execute(querry, tuple(values))
+    cur.execute("SELECT id,name FROM " + table + " WHERE name=?", (input,))
+    res = cur.fetchone()
+    db.commit()
+    if table == "Profs":
+        return (res[0], res[1].replace(" ", "_"))
+    return res
+
+
+def linkLP(lid: int, pid: int):
+    cur = db.cursor()
+    cur.execute("INSERT INTO LPLink(LId,PId) VALUES(?,?)", (lid, pid))
+    db.commit()
 
 
 # async def get_submittion(request: Request):
