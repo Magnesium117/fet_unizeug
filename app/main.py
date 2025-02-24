@@ -322,7 +322,7 @@ def make_savepath(
     pfpath = pf[1] + "/"
     catpath = CATEGORIES[int(cat)] + "/"
     scpath = ""
-    if int(cat) in SUBCAT_CATEGORIES_I:
+    if int(cat) in SUBCAT_CATEGORIES_I and subcat != "":
         sc = get_subcatpath(subcat, int(cat), pf[0], lv[0])
         scpath = sc[1] + "/"
     savepath = UNIZEUG_PATH + lvpath + pfpath + catpath + scpath

@@ -317,8 +317,8 @@ async function uploadFile(formData) {
       console.log("upload OK " + responseJSON["filename"]);
       console.log(response);
       delete doc.pdf;
-      delete doc;
-      document.getElementById("fname").value = responseJSON.filename;
+      //delete doc;
+      document.getElementById("name").value = responseJSON.filename;
       doc = new PDFDocument(
         responseJSON.path,
         responseJSON.fid,
