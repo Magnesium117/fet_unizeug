@@ -19,9 +19,9 @@
   <div class="main">
     <div class="left" id="controldiv">
       <div id="fileupload">
-        <form id="uploadform">
+        <form id="uploadform" enctype="multipart/form-data">
           <label for="filepicker">Choose a pdf file</label>
-          <input type="file" id="filepicker" />
+          <input type="file" name="files" id="filepicker" multiple />
           <button type="submit" id="upload" method="POST">Upload</button>
         </form>
       </div>

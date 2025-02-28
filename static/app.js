@@ -296,13 +296,14 @@ async function submitForm(formData) {
 function uploadPdf(eve) {
   eve.preventDefault();
   const fileupload = document.querySelector("#filepicker");
-  const file = fileupload.files[0];
+  const file = fileupload.files;
   if (!file) {
     alert("Please Choose a file");
     return;
   }
-  const formData = new FormData();
-  formData.append("file", file);
+  const form = document.querySelector("#uploadform");
+  const formData = new FormData(form);
+  //formData.append("files", file);
   uploadFile(formData);
 }
 async function uploadFile(formData) {

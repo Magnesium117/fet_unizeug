@@ -14,6 +14,10 @@ import re
 import os
 import mariadb
 
+import filetype
+
+import datetime
+
 
 app = FastAPI()
 
@@ -36,6 +40,7 @@ SUBCAT_CATEGORIES_I = [1, 2, 3]
 EX_DATE_CATEGORIES = ["Prüfungen", "Klausuren"]
 EX_DATE_CATEGORIES_I = [0, 1]
 UNIZEUG_PATH = "./app/dest/"
+FILES_IN_PROGRESS = "./app/files/"
 
 
 # cur = db.cursor()
@@ -51,9 +56,9 @@ async def get_index():
 @app.get("/files/{file_id}")
 async def get_file(file_id: str):
     if file_id == "unsupported":
-        return FileResponse(".app/files/unsupported.pdf")
+        return FileResponse(FILES_IN_PROGRESS + "unsupported.pdf")
     if file_id == "empty":
-        return FileResponse(".app/files/empty.pdf")
+        return FileResponse(FILES_IN_PROGRESS + "empty.pdf")
     cur = db.cursor()
     try:
         cur.execute("Select filename from FIP where id=?", (file_id,))
@@ -63,7 +68,7 @@ async def get_file(file_id: str):
             status_code=500, detail="Somethings wrong with the database"
         )
     filename = cur.fetchone()[0]
-    return FileResponse(f"./app/files/{filename}")
+    return FileResponse(FILES_IN_PROGRESS + filename)
 
 
 @app.get("/search/lva")
@@ -171,14 +176,57 @@ async def search_subcats(
 
 
 @app.post("/uploadfile/")
-async def create_upload_file(file: UploadFile):
-    content = await file.read()
-    filename = file.filename if file.filename is not None else "None"
-    locpath = "./app/files/" + filename
+async def create_upload_file(files: List[UploadFile], c2pdf: bool = True):
+    if len(files) == 0:
+        raise HTTPException(status_code=400, detail="No files found in file submission")
+    filename = files[0].filename if files[0].filename is not None else "None"
+    if len(files) == 1:
+        content = await files[0].read()
+        ft = filetype.guess(content).extension
+        if c2pdf and ft != "pdf":
+            ret = convert_to_pdf(content)
+            if ret is not None:
+                content = ret
+                filename = filename_to_pdf(filename)
+                ft = "pdf"
+    else:
+        filecontents = []
+        for file in files:
+            content = await file.read()
+            ft = filetype.guess(content).extension
+            if ft == "pdf":
+                filecontents.append(content)
+                continue
+            if c2pdf:
+                res = convert_to_pdf(content)
+                if res is None:
+                    filename = await save_files_to_folder(files)
+                    content = None
+                    ft = "dir"
+                    break
+                filecontents.append(res)
+            else:
+                filename = await save_files_to_folder(files)
+                content = None
+                ft = "dir"
+                break
+        else:  # is executed when the loop was not broken out of
+            filename = filename_to_pdf(filename)
+            ft = "pdf"
+            doc = pymupdf.open()
+            for content in filecontents:
+                doc.insert_pdf(pymupdf.open("pdf", content))
+            content = doc.tobytes()
+    if ft != "dir":
+        filename = make_filename_unique(filename)
+    locpath = FILES_IN_PROGRESS + filename
     # locpaths.append(locpath)
     cur = db.cursor()
     try:
-        cur.execute("Insert Into FIP (filename) Values(?)", (filename,))
+        cur.execute(
+            "Insert Into FIP (filename,filetype,initTimeStamp) Values(?,?,?)",
+            (filename, ft, str(datetime.datetime.now())),
+        )
     except mariadb.Error as e:
         print(f"Error: {e}")
         raise HTTPException(
@@ -192,15 +240,16 @@ async def create_upload_file(file: UploadFile):
             status_code=500, detail="Somethings wrong with the database"
         )
     id = cur.fetchone()[0]
-    with open(locpath, "wb") as f:
-        f.write(content)
+    if content is not None:
+        with open(locpath, "wb") as f:
+            f.write(content)
     # app.mount("/files", StaticFiles(directory="./app/files/"), name="files")
     db.commit()
     fname = "".join(filename.split(".")[0:-1])
-    ftype = filename.split(".")[-1]
+    # ftype = filename.split(".")[-1]
     return {
         "filename": fname,
-        "filetype": ftype,
+        "filetype": ft,
         "path": "/files/" + id,
         "fid": id,
     }
@@ -430,6 +479,90 @@ def linkLP(lid: int, pid: int):
     cur = db.cursor()
     cur.execute("INSERT INTO LPLink(LId,PId) VALUES(?,?)", (lid, pid))
     db.commit()
+
+
+def convert_to_pdf(file: bytes) -> bytes | None:
+    # ft = filetype.guess(file)
+    # cid = hash(file)
+    # if (
+    #     ft.mime
+    #     == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    # ):
+    #     with open(f"./app/convert_temp/input{cid}.docx", "wb") as f:
+    #         f.write(file)
+    #     docx2pdf.convert(
+    #         f"./app/convert_temp/input{cid}.docx", f"./app/convert_temp/output{cid}.pdf"
+    #     )
+    #     with open(f"./app/convert_temp/output{cid}.pdf", "rb") as f:
+    #         cont = f.read()
+    #     os.remove(f"./app/convert_temp/input{cid}.docx")
+    #     os.remove(f"./app/convert_temp/output{cid}.pdf")
+    #     return cont
+    # elif (
+    #     ft.mime
+    #     == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    # ):
+    #     with open("f./app/convert_temp/input{cid}.pptx", "wb") as f:
+    #         f.write(file)
+    #     pptxtopdf.convert(
+    #         f"./app/convert_temp/input{cid}.pptx", f"./app/convert_temp/output{cid}.pdf"
+    #     )
+    #     with open(f"./app/convert_temp/output{cid}.pdf", "rb") as f:
+    #         cont = f.read()
+    #     os.remove(f"./app/convert_temp/input{cid}.pptx")
+    #     os.remove(f"./app/convert_temp/output{cid}.pdf")
+    #     return cont
+    try:
+        doc = pymupdf.Document(stream=file)
+        return doc.convert_to_pdf()
+    except (pymupdf.mupdf.FzErrorUnsupported, pymupdf.FileDataError) as e:
+        print(e)
+        return None
+
+
+def filename_to_pdf(filename: str) -> str:
+    farr = filename.split(".")
+    if len(farr) > 1:
+        farr[-1] = "pdf"
+        filename = ".".join(farr)
+    else:
+        filename = filename + ".pdf"
+    return filename
+
+
+def make_filename_unique(filename: str, idx: int | None = None) -> str:
+    cur = db.cursor()
+    cur.execute("SELECT id FROM FIP WHERE filename=?", (filename,))
+    res = cur.fetchall()
+    if res is not None and len(res) > 0:
+        farr = filename.split(".")
+        if len(farr) > 1:
+            farr[-2] = (
+                farr[-2][:-1] + str(idx + 1) if idx is not None else farr[-2] + "_0"
+            )
+            filename = ".".join(farr)
+        else:
+            filename = (
+                filename[:-1] + str(idx + 1) if idx is not None else filename + "_0"
+            )
+        idx = 0 if idx is None else idx + 1
+        idx = idx if idx < 10 else idx - 10
+        filename = make_filename_unique(filename, idx)
+    return filename
+
+
+async def save_files_to_folder(files: List[UploadFile]) -> str:
+    filename = files[0].filename if files[0].filename is not None else "None"
+    filename = filename.split(".")[0]
+    if filename == "":
+        filename = "None"
+    filename = make_filename_unique(filename)
+    os.mkdir(FILES_IN_PROGRESS + filename)
+    for idx, file in enumerate(files):
+        fn = file.filename if file.filename is not None else "None" + str(idx)
+        with open(FILES_IN_PROGRESS + filename + "/" + fn, "wb") as f:
+            f.write(await file.read())
+    return filename
 
 
 # async def get_submittion(request: Request):
