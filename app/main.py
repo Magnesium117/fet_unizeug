@@ -324,7 +324,7 @@ def censor_pdf(
                     color=(0, 0, 0),
                     fill=(0, 0, 0),
                 )
-        bitmap = page.get_pixmap()
+        bitmap = page.get_pixmap(dpi=300)
         pdf_bytes = bitmap.pdfocr_tobytes(
             language="deu",
             tessdata="/usr/share/tessdata/",  # tesseract needs to be installed; this is the path to thetesseract files
@@ -375,7 +375,7 @@ def make_savepath(
         sc = get_subcatpath(subcat, int(cat), pf[0], lv[0])
         scpath = sc[1] + "/"
     savepath = UNIZEUG_PATH + lvpath + pfpath + catpath + scpath
-    os.makedirs(savepath)
+    os.makedirs(savepath, exist_ok=True)
     filename = sem + "_"
     if int(cat) in EX_DATE_CATEGORIES_I:
         _, mm, dd = ex_date.split("-")
