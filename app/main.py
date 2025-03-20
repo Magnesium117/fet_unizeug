@@ -389,7 +389,7 @@ def make_savepath(
 
 
 def get_lvpath(lva: str) -> Tuple[int, str]:
-    """returns the path in UNIZEUG from a LVA based on its LVID (or name) that may be within a string. It uses the path within the database. If there is no Entry with a fitting LVID in the database it creates a new LVA."""
+    """returns the path in UNIZEUG from a LVA based on its LVID (or name) that may be within a string. It uses the path within the database. If there is no Entry with a fitting LVID in the database it creates a new LVA. Returns: (id,path)"""
     cur = db.cursor()
     lvid = re.search(r"[a-zA-Z0-9]{3}\.[a-zA-Z0-9]{3}", lva)
     if lvid is not None:
@@ -412,7 +412,7 @@ def get_lvpath(lva: str) -> Tuple[int, str]:
 
 
 def get_profpath(prof: str, lid: int) -> Tuple[int, str]:
-    """Generates the foldername for a prof based on his name. It searches the database for matches."""
+    """Generates the foldername for a prof based on his name. It searches the database for matches. Returns: (id,name)"""
     cur = db.cursor()
     prof = prof.replace("_", " ")
     cur.execute("SELECT id,name FROM Profs WHERE name=?", (prof,))
@@ -439,7 +439,7 @@ def get_profpath(prof: str, lid: int) -> Tuple[int, str]:
 
 
 def get_subcatpath(subcat: str, cat: int, pid: int, lid: int) -> Tuple[int, str]:
-    """Generates the subcat path from a subcat name."""
+    """Generates the subcat path from a subcat name. Returns: (id,name)"""
     cur = db.cursor()
     cur.execute(
         "SELECT id,name FROM SubCats WHERE LId=? AND PId=? AND cat=? AND name=?",
@@ -452,7 +452,7 @@ def get_subcatpath(subcat: str, cat: int, pid: int, lid: int) -> Tuple[int, str]
 
 
 def makenew(input: str, table: str, **kwargs) -> Tuple[int, str]:
-    """Generates new Entrys in the database for LVAs, Profs, SUBCATS"""
+    """Generates new Entrys in the database for LVAs, Profs, SUBCATS. Returns: (id,name/path)"""
     cur = db.cursor()
     if table == "LVAs":
         lvaid = re.search(r"[a-zA-Z0-9]{3}\.[a-zA-Z0-9]{3}", input)
@@ -485,12 +485,14 @@ def makenew(input: str, table: str, **kwargs) -> Tuple[int, str]:
 
 
 def linkLP(lid: int, pid: int):
+    """declares that a Prof (id in database) offers a LVA (id in database)"""
     cur = db.cursor()
     cur.execute("INSERT INTO LPLink(LId,PId) VALUES(?,?)", (lid, pid))
     db.commit()
 
 
 def convert_to_pdf(file: bytes) -> bytes | None:
+    """Converts an image(thats all thats implemented right now) into a pdf."""
     # ft = filetype.guess(file)
     # cid = hash(file)
     # if (
