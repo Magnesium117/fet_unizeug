@@ -365,6 +365,7 @@ def make_savepath(
     fname: str,
     ftype: str,
 ) -> str:
+    """Generates the path, the file is saved to after the upload process is finished. It creates all nessecery directories."""
     lv = get_lvpath(lva)
     lvpath = lv[1] + "/"
     pf = get_profpath(prof, lv[0])
@@ -374,7 +375,10 @@ def make_savepath(
     if int(cat) in SUBCAT_CATEGORIES_I and subcat != "":
         sc = get_subcatpath(subcat, int(cat), pf[0], lv[0])
         scpath = sc[1] + "/"
-    savepath = UNIZEUG_PATH + lvpath + pfpath + catpath + scpath
+    if int(cat) == 6:
+        savepath = UNIZEUG_PATH + lv[1] + "_Multimedia_only/" + pfpath
+    else:
+        savepath = UNIZEUG_PATH + lvpath + pfpath + catpath + scpath
     os.makedirs(savepath, exist_ok=True)
     filename = sem + "_"
     if int(cat) in EX_DATE_CATEGORIES_I:
@@ -385,6 +389,7 @@ def make_savepath(
 
 
 def get_lvpath(lva: str) -> Tuple[int, str]:
+    """returns the path in UNIZEUG from a LVA based on its LVID (or name) that may be within a string. It uses the path within the database. If there is no Entry with a fitting LVID in the database it creates a new LVA."""
     cur = db.cursor()
     lvid = re.search(r"[a-zA-Z0-9]{3}\.[a-zA-Z0-9]{3}", lva)
     if lvid is not None:
@@ -407,11 +412,13 @@ def get_lvpath(lva: str) -> Tuple[int, str]:
 
 
 def get_profpath(prof: str, lid: int) -> Tuple[int, str]:
+    """Generates the foldername for a prof based on his name. It searches the database for matches."""
     cur = db.cursor()
     prof = prof.replace("_", " ")
     cur.execute("SELECT id,name FROM Profs WHERE name=?", (prof,))
     res = cur.fetchall()
-    if res is not None:
+    print(res != [])
+    if res is not None and res != []:
         ret = (res[0][0], res[0][1].replace(" ", "_"))
         cur.execute("SELECT * FROM LPLink WHERE LId=? AND PId=?", (lid, ret[0]))
         if cur.fetchall() is None:
@@ -420,7 +427,7 @@ def get_profpath(prof: str, lid: int) -> Tuple[int, str]:
     fname, lname = prof.split(" ")
     cur.execute("SELECT id,name FROM Profs WHERE name like ?", (lname + " " + fname,))
     res = cur.fetchall()
-    if res is not None:
+    if res is not None and res != []:
         ret = (res[0][0], res[0][1].replace(" ", "_"))
         cur.execute("SELECT * FROM LPLink WHERE LId=? AND PId=?", (lid, ret[0]))
         if cur.fetchall() is None:
@@ -432,6 +439,7 @@ def get_profpath(prof: str, lid: int) -> Tuple[int, str]:
 
 
 def get_subcatpath(subcat: str, cat: int, pid: int, lid: int) -> Tuple[int, str]:
+    """Generates the subcat path from a subcat name."""
     cur = db.cursor()
     cur.execute(
         "SELECT id,name FROM SubCats WHERE LId=? AND PId=? AND cat=? AND name=?",
@@ -444,6 +452,7 @@ def get_subcatpath(subcat: str, cat: int, pid: int, lid: int) -> Tuple[int, str]
 
 
 def makenew(input: str, table: str, **kwargs) -> Tuple[int, str]:
+    """Generates new Entrys in the database for LVAs, Profs, SUBCATS"""
     cur = db.cursor()
     if table == "LVAs":
         lvaid = re.search(r"[a-zA-Z0-9]{3}\.[a-zA-Z0-9]{3}", input)
