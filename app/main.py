@@ -50,11 +50,13 @@ FILES_IN_PROGRESS = "./app/files/"
 # locpaths = ["./VO_Mathematik_3.pdf"]  # replace this with a database
 @app.get("/")
 async def get_index():
+    """gives the Index.html file"""
     return FileResponse("./index.html")
 
 
 @app.get("/files/{file_id}")
 async def get_file(file_id: str):
+    """returns the file that cooorosponds with the given ID"""
     if file_id == "unsupported":
         return FileResponse(FILES_IN_PROGRESS + "unsupported.pdf")
     if file_id == "empty":
@@ -75,6 +77,7 @@ async def get_file(file_id: str):
 async def search_lva(
     searchterm: str, searchlim: int = 10
 ) -> List[Dict[str, int | str]]:
+    """returns the LVA for a search in the database"""
     res = []
     cur = db.cursor(dictionary=True)
     if await is_LVID(searchterm):
@@ -103,6 +106,7 @@ async def search_lva(
 async def search_profs(
     searchterm: str = "", lid: int | None = None, searchlim: int = 10
 ) -> List[Dict[str, str | int]]:
+    """returns the Prof for a searchterm and LVA id"""
     res = []
     zw = []
     cur = db.cursor(dictionary=True)
@@ -141,6 +145,7 @@ async def search_subcats(
     cat: int | None = None,
     searchlim: int = 10,
 ) -> List[Dict[str, str | int]]:
+    """searches for avaliable subcatrgories in a specific LVA with a specific Prof(optional)"""
     res = []
     rest = []
     cur = db.cursor(dictionary=True)
@@ -177,6 +182,7 @@ async def search_subcats(
 
 @app.post("/uploadfile/")
 async def create_upload_file(files: List[UploadFile], c2pdf: bool = True):
+    """Handles files uploaded. generates ID; saves file; saves path in database"""
     if len(files) == 0:
         raise HTTPException(status_code=400, detail="No files found in file submission")
     filename = files[0].filename if files[0].filename is not None else "None"
@@ -275,6 +281,7 @@ async def get_submission(
         str, Form()
     ],  # Scales of Pages  # Annotated[List[Dict[str, float]], Form()],
 ):
+    """handles submission"""
     print(lva, prof, fname, stype, subcat, sem, ex_date, rects, pagescales)
     rects_p = json.loads(rects)
     scales_p = json.loads(pagescales)
@@ -301,6 +308,7 @@ def censor_pdf(
     rects: List[List[List[float]]],
     scales: List[Dict[str, float]],
 ):
+    """Censors pdf and runs OCR"""
     doc = pymupdf.open(path)
     output = pymupdf.open()
     page = doc[0]
@@ -335,6 +343,7 @@ def censor_pdf(
 
 
 async def is_LVID(term: str) -> bool:
+    """Returns weather a string has the format of a LVA ID"""
     if re.match(r"[a-zA-Z0-9]{3}\.[a-zA-Z0-9]*", term):
         return True
     if term.isdigit():
@@ -345,6 +354,7 @@ async def is_LVID(term: str) -> bool:
 def remove_duplicates(
     results: List[Dict[str, str | int]],
 ) -> List[Dict[str, str | int]]:
+    """removes duplicate file Ids"""
     ids = []
     res = []
     for result in results:
@@ -532,6 +542,7 @@ def convert_to_pdf(file: bytes) -> bytes | None:
 
 
 def filename_to_pdf(filename: str) -> str:
+    """converts any filename.any to filename.pdf"""
     farr = filename.split(".")
     if len(farr) > 1:
         farr[-1] = "pdf"
@@ -542,6 +553,7 @@ def filename_to_pdf(filename: str) -> str:
 
 
 def make_filename_unique(filename: str, idx: int | None = None) -> str:
+    """makes sure, there are no duplicate filenames in the temporary folder"""
     cur = db.cursor()
     cur.execute("SELECT id FROM FIP WHERE filename=?", (filename,))
     res = cur.fetchall()

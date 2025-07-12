@@ -78,7 +78,8 @@ def get_dirstruct():
         if lvid is None:
             continue
         lvid = lvid.group()[:3] + lvid.group()[4:]
-        name = fname[:-8]
+        # name = fname[:-8]
+        name = re.sub(r"[a-zA-Z0-9]{3}\.[a-zA-Z0-9]{3}", "", fname)
         # print(name)
         # print(lvid)
         cur = db.cursor()
