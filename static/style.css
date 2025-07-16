@@ -6,7 +6,7 @@ body {
 
 body {
   overflow: hidden;
-  background-color: slategrey;
+  background-color: #2f3957;
   font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -15,11 +15,11 @@ body {
   margin: 0;
   width: 75vw;
   float: right;
-  background-color: navy;
+  /* background-color: navy; */
 }
 
 .left {
-  background-color: blueviolet;
+  /* background-color: blueviolet; */
   height: 100%;
   float: left;
 }
@@ -77,6 +77,16 @@ span {
 #submitdiv {
   /*position: relative;*/
   width: 500px;
+  padding: 10px;
+}
+
+label {
+  /* color: white; */
+  background-color: grey;
+  border-radius: 5px;
+  padding: 5px;
+  /* margin: 10px; */
+  margin-top: 10px;
 }
 
 /*Things I've stolen from https://www.w3schools.com/howto/howto_js_autocomplete.asp*/
@@ -84,29 +94,59 @@ span {
   /*the container must be positioned relative:*/
   position: relative;
   display: inline-block;
-  width: 300px;
+  /* width: 400px; */
+  width: 100%;
+  padding: none;
+  margin-bottom: 10px;
+}
+
+#name {
+  margin-bottom: 10px;
 }
 
 input {
-  border: 1px solid transparent;
-  background-color: #f1f1f1;
+  border: 1px solid #818181;
+  background-color: #a1a1a1;
   padding: 10px;
-  font-size: 16px;
+  /* height: 50px; */
+  font-size: 12pt;
+  border-radius: 20px;
+  margin-top: 10px;
+  /* margin-bottom: 10px; */
 }
 
 input[type="text"] {
-  background-color: #f1f1f1;
-  width: 100%;
+  background-color: #b1b1b1;
+  /* width: 100%; */
+  width: 478px;
+  border-radius: 20px;
 }
 
-input[type="submit"] {
-  background-color: DodgerBlue;
-  color: #fff;
+/* input[type="text"]:focus { */
+/*   border-bottom-right-radius: 0px; */
+/*   border-bottom-left-radius: 0px; */
+/*   outline: none; */
+/* } */
+
+div>input[type="text"]:focus {
+  border-bottom-right-radius: 0px;
+  border-bottom-left-radius: 0px;
+  outline: none;
+}
+
+button[type="submit"] {
+  background-color: #0872a9;
+  /* color: #fff; */
+  border-radius: 20px;
+  padding: 5px;
 }
 
 .autocomplete-items {
   position: absolute;
-  border: 1px solid #d4d4d4;
+  /* border: 1px solid #d4d4d4; */
+  border: 1px solid #818181;
+  background-color: #b1b1b1;
+  /* background-color: #b1b1b1; */
   border-bottom: none;
   border-top: none;
   z-index: 99;
@@ -114,22 +154,78 @@ input[type="submit"] {
   top: 100%;
   left: 0;
   right: 0;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+  /* padding: 20px; */
+  /* padding-top: 10px; */
+  padding-bottom: 20px;
 }
 
 .autocomplete-items div {
   padding: 10px;
   cursor: pointer;
-  background-color: #fff;
+  /* border-radius: 20px; */
+  background-color: #b1b1b1;
   border-bottom: 1px solid #d4d4d4;
 }
 
 .autocomplete-items div:hover {
   /*when hovering an item:*/
-  background-color: #e9e9e9;
+  background-color: #0872a9;
 }
 
 .autocomplete-active {
   /*when navigating through the items using the arrow keys:*/
-  background-color: DodgerBlue !important;
+  background-color: #0872a9 !important;
   color: #ffffff;
+}
+
+/* filedrop */
+input[type="file"] {
+  /* flex: 1; */
+  display: flex;
+  background-color: #b1b1b1;
+  border-radius: 20px;
+  padding: 10px;
+  width: 100%;
+  margin-right: 10px;
+  margin-top: 10px;
+  margin-left: 10px;
+  /* margin-bottom: auto; */
+}
+
+input[type="file"]::file-selector-button {
+  background-color: #d1d1d1;
+  border-radius: 20px;
+  border-color: #a1a1a1;
+}
+
+#fileupload {
+  /* display: inline-flex; */
+  width: 500px;
+  border-radius: 20px;
+  background-color: #4f5977;
+  margin: 10px;
+}
+
+.fileupload {
+  margin-left: auto;
+  margin-right: 10px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  width: 25%;
+  /* align-self: right; */
+  /* float: right; */
+}
+
+#uploadform {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.filetop {
+  display: flex;
+  width: 100%;
+  /* background-color: purple; */
 }

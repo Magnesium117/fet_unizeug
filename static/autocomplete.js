@@ -20,10 +20,13 @@ function autocomplete(inp, type) {
       val = this.value;
     /*close any already open lists of autocompleted values*/
     closeAllLists();
-    if (!val && type === "lva") {
+    if (!val && type === "lva" && pid === null) {
       return false;
     }
-    if (type === "prof" && lid !== null) {
+    if (type === "lva" && pid !== null) {
+      apirq =
+        url + type + "?searchterm=" + val + "&pid=" + pid + "&searchlim=10";
+    } else if (type === "prof" && lid !== null) {
       apirq =
         url + type + "?searchterm=" + val + "&lid=" + lid + "&searchlim=10";
     } else if (type === "subcat" && lid !== null && pid !== null) {

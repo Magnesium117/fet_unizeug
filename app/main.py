@@ -75,27 +75,46 @@ async def get_file(file_id: str):
 
 @app.get("/search/lva")
 async def search_lva(
-    searchterm: str, searchlim: int = 10
+    searchterm: str = "", pid: str | None = None, searchlim: int = 10
 ) -> List[Dict[str, int | str]]:
     """returns the LVA for a search in the database"""
     res = []
+    zw = []
     cur = db.cursor(dictionary=True)
     if await is_LVID(searchterm):
         cur.execute(
-            "SELECT lvid,lvname FROM LVAs WHERE lvid LIKE ?", (searchterm + "%",)
+            "SELECT id,lvid,lvname FROM LVAs WHERE lvid LIKE ?", (searchterm + "%",)
         )
         res = cur.fetchall()
     else:
-        cur.execute(
-            "SELECT id,lvid,lvname FROM LVAs WHERE lvname LIKE ?",
-            (searchterm + "%",),
-        )
-        res = cur.fetchall()
-        cur.execute(
-            "SELECT id,lvid,lvname FROM LVAs WHERE lvname LIKE ?",
-            ("%" + searchterm + "%",),
-        )
-        res = remove_duplicates(res + cur.fetchall())
+        if pid is not None:
+            cur.execute(
+                "SELECT LVAs.id,LVAs.lvid,LVAs.lvname FROM LVAs LEFT JOIN LPLink ON LVAs.id=LPLink.lid WHERE lvname like ? AND pid=?",
+                (searchterm + "%", pid),
+            )
+            res += cur.fetchall()
+            cur.execute(
+                "SELECT LVAs.id,LVAs.lvid,LVAs.lvname FROM LVAs LEFT JOIN LPLink ON LVAs.id=LPLink.lid WHERE lvname like ? AND pid=?",
+                ("%" + searchterm + "%", pid),
+            )
+            res += cur.fetchall()
+            cur.execute(
+                "SELECT LVAs.id,LVAs.lvid,LVAs.lvname FROM LVAs LEFT JOIN LPLink ON LVAs.id=LPLink.lid WHERE pid=?",
+                (pid,),
+            )
+            zw = cur.fetchall()
+        if searchterm != "":
+            cur.execute(
+                "SELECT id,lvid,lvname FROM LVAs WHERE lvname LIKE ?",
+                (searchterm + "%",),
+            )
+            res += cur.fetchall()
+            cur.execute(
+                "SELECT id,lvid,lvname FROM LVAs WHERE lvname LIKE ?",
+                ("%" + searchterm + "%",),
+            )
+            res += cur.fetchall()
+        res = remove_duplicates(res + zw)
     if searchlim == 0:
         return res
     else:
@@ -188,7 +207,7 @@ async def create_upload_file(files: List[UploadFile], c2pdf: bool = True):
     filename = files[0].filename if files[0].filename is not None else "None"
     if len(files) == 1:
         content = await files[0].read()
-        ft = filetype.guess(content).extension
+        ft: str = guess_filetype(content, filename)
         if c2pdf and ft != "pdf":
             ret = convert_to_pdf(content)
             if ret is not None:
@@ -199,7 +218,7 @@ async def create_upload_file(files: List[UploadFile], c2pdf: bool = True):
         filecontents = []
         for file in files:
             content = await file.read()
-            ft = filetype.guess(content).extension
+            ft = guess_filetype(content, filename)
             if ft == "pdf":
                 filecontents.append(content)
                 continue
@@ -575,6 +594,7 @@ def make_filename_unique(filename: str, idx: int | None = None) -> str:
 
 
 async def save_files_to_folder(files: List[UploadFile]) -> str:
+    """saves file to files in prograss folder"""
     filename = files[0].filename if files[0].filename is not None else "None"
     filename = filename.split(".")[0]
     if filename == "":
@@ -592,3 +612,12 @@ async def save_files_to_folder(files: List[UploadFile]) -> str:
 #     reqJson = await request.form()
 #     print(reqJson)
 #     return {"done": "ok"}
+def guess_filetype(content: str, filename: str) -> str:
+    """Guesses the filetype of a file based on first the sontent, If that fails the extension in teh filename. If no conclusion can be reached it reutrns an empty string"""
+    ftyp = filetype.guess(content)
+    if ftyp is not None:
+        return ftyp.extension
+    farr = filename.split(".")
+    if len(farr) > 1:
+        return filename.split(".")[-1]
+    return ""

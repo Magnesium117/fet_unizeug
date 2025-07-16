@@ -7,6 +7,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.4.456/pdf.min.js"></script>
   <script src="static/app.js" defer></script>
   <script src="static/autocomplete.js" defer></script>
+  <script src="static/dynhide.js" defer></script>
+  <script src="static/filedrop.js" defer></script>
   <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
   <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
   <link rel="shortcut icon" href="/favicon/favicon.ico" />
@@ -20,23 +22,29 @@
     <div class="left" id="controldiv">
       <div id="fileupload">
         <form id="uploadform" enctype="multipart/form-data">
-          <label for="filepicker">Choose a pdf file</label>
-          <input type="file" name="files" id="filepicker" multiple />
-          <button type="submit" id="upload" method="POST">Upload</button>
+          <div class="filetop">
+            <!-- <label for="filepicker">Choose a file</label> -->
+            <input type="file" name="files" id="filepicker" multiple placeholder="Drop File" />
+          </div>
+          <button type="submit" id="upload" method="POST" class="fileupload">
+            Upload
+          </button>
         </form>
       </div>
       <div id="submitdiv">
         <form id="submitform" ,onsubmit="submitFile(event)">
           <label for="lva">Lehrveranstaltung:</label>
           <div class="autocomplete">
-            <input type="text" id="lva" name="lva" placeholder="Lehrveranstaltung" autocomplete="off" /><br />
+            <input type="text" id="lva" name="lva" placeholder="Lehrveranstaltung" autocomplete="off" />
           </div>
           <br />
+          <!-- <br /> -->
           <label for="prof">Vortragende*r:</label>
           <div class="autocomplete">
-            <input type="text" id="prof" name="prof" placeholder="Vortragende*r" autocomplete="off" /><br />
+            <input type="text" id="prof" name="prof" placeholder="Vortragende*r" autocomplete="off" />
           </div>
           <br />
+          <!-- <br /> -->
           <label for="name">Name:</label>
           <input type="text" id="name" name="fname" placeholder="Prüfung" /><br />
           <label for="sem">Semester:</label>
@@ -55,14 +63,17 @@
           <label for="zusammenfassungen">Zusammenfassung</label><br />
           <input type="radio" id="multimedia" name="stype" value="6" />
           <label for="multimedia">Multimedia</label><br />
-          <label for="subcat">Veranstaltung</label>
-          <div class="autocomplete">
-            <input type="text" id="subcat" name="subcat" placeholder="Klausur 1" autocomplete="off" />
+          <br />
+          <div id="subcatdiv">
+            <label for="subcat">Veranstaltung</label>
+            <div class="autocomplete">
+              <input type="text" id="subcat" name="subcat" placeholder="Klausur 1" autocomplete="off" />
+            </div>
           </div>
-          <br />
-          <br />
-          <label for="date">Datum</label>
-          <input type="date" id="date" name="ex_date" /><br />
+          <div id="datediv">
+            <label for="date">Datum</label>
+            <input type="date" id="date" name="ex_date" placeholder="Drop File" /><br />
+          </div>
           <button type="submit" id="send">Senden</button>
         </form>
       </div>
