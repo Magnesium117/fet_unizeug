@@ -18,6 +18,13 @@ import filetype
 
 import datetime
 
+import logging
+
+log = logging.getLogger(__name__)
+logging.basicConfig(filename="app.log", level=logging.INFO)
+debug = log.debug
+info = log.info
+error = log.error
 
 app = FastAPI()
 
@@ -58,8 +65,10 @@ async def get_index():
 async def get_file(file_id: str):
     """returns the file that cooorosponds with the given ID"""
     if file_id == "unsupported":
+        error("File is unsupported")
         return FileResponse(FILES_IN_PROGRESS + "unsupported.pdf")
     if file_id == "empty":
+        error("File Id empty")
         return FileResponse(FILES_IN_PROGRESS + "empty.pdf")
     cur = db.cursor()
     try:
@@ -299,9 +308,15 @@ async def get_submission(
     pagescales: Annotated[
         str, Form()
     ],  # Scales of Pages  # Annotated[List[Dict[str, float]], Form()],
+    censor: Annotated[str, Form()] | bool = False,
 ):
     """handles submission"""
-    print(lva, prof, fname, stype, subcat, sem, ex_date, rects, pagescales)
+    print(
+        f"lva: {lva}, prof: {prof}, fname {fname}, stype: {stype}, subcat: {subcat}, sem: {sem}, ex_date: {ex_date}, rects: {rects}, pagescales: {pagescales}, censor: {censor}"
+    )
+    info(
+        f"lva: {lva}, prof: {prof}, fname {fname}, stype: {stype}, subcat: {subcat}, sem: {sem}, ex_date: {ex_date}, rects: {rects}, pagescales: {pagescales}, censor: {censor}"
+    )
     rects_p = json.loads(rects)
     scales_p = json.loads(pagescales)
     cur = db.cursor()
@@ -316,9 +331,12 @@ async def get_submission(
     try:
         dest = make_savepath(lva, prof, stype, subcat, sem, ex_date, fname, ftype)
     except ValueError as e:
+        error(f"Error creating savepath: f{e}")
         raise HTTPException(status_code=400, detail=str(e))
-    censor_pdf(filepath, dest, rects_p, scales_p)
-    return {"done": "ok"}
+    censor_pdf(filepath, dest, rects_p, scales_p, False if censor is False else True)
+    # return {"done": "ok"}
+    print(dest)
+    return FileResponse(dest, content_disposition_type="inline")
 
 
 def censor_pdf(
@@ -326,8 +344,19 @@ def censor_pdf(
     destpath: str,
     rects: List[List[List[float]]],
     scales: List[Dict[str, float]],
+    secure: bool,
 ):
-    """Censors pdf and runs OCR"""
+    """Censors pdf and runs OCR
+    If Secure is True the file is converted to Pixels and then recreated; else the censored sections are just covering the text below and can be easiliy removed with e.g. Inkscape
+    Args:
+        path: path to the pdf document
+        destpath: Path where the result is supposed to be saved to
+        rects: Coordinates of rectangles to be placed on the pdf document
+        scales: Scales of the rects coordinates for the pdf document
+        secure: weather or not the pdf document is supposed to be converted into an Image (and back) to make shure, the censoring is irreversible
+    Returns:
+        None
+    """
     doc = pymupdf.open(path)
     output = pymupdf.open()
     page = doc[0]
@@ -336,7 +365,8 @@ def censor_pdf(
     print(width, height)
     for i in range(doc.page_count):
         page = doc[i]
-        if i < len(rects):
+        if i < len(rects) and rects[i] != []:
+            print(i)
             wfac = page.rect.width / scales[i]["width"]
             hfac = page.rect.height / scales[i]["height"]
             for rect in rects[i]:
@@ -351,14 +381,20 @@ def censor_pdf(
                     color=(0, 0, 0),
                     fill=(0, 0, 0),
                 )
-        bitmap = page.get_pixmap(dpi=300)
-        pdf_bytes = bitmap.pdfocr_tobytes(
-            language="deu",
-            tessdata="/usr/share/tessdata/",  # tesseract needs to be installed; this is the path to thetesseract files
-        )
-        output.insert_pdf(pymupdf.Document(stream=pdf_bytes))
+        if secure:
+            bitmap = page.get_pixmap(dpi=400)
+            pdf_bytes = bitmap.pdfocr_tobytes(
+                language="deu",
+                tessdata="/usr/share/tessdata/",  # tesseract needs to be installed; this is the path to thetesseract files
+            )
+            output.insert_pdf(pymupdf.Document(stream=pdf_bytes))
+            print(f" Page {i}/{doc.page_count} CENSORING DONE")
+        else:
+            output.insert_pdf(doc, i, i)
     output.save(destpath)
-    print("CENSORING DONE")
+
+
+# def save_without_censoring(dest)
 
 
 async def is_LVID(term: str) -> bool:
@@ -556,6 +592,7 @@ def convert_to_pdf(file: bytes) -> bytes | None:
         doc = pymupdf.Document(stream=file)
         return doc.convert_to_pdf()
     except (pymupdf.mupdf.FzErrorUnsupported, pymupdf.FileDataError) as e:
+        error(f"Error converting Image to pdf file: {e}")
         print(e)
         return None
 
@@ -612,7 +649,7 @@ async def save_files_to_folder(files: List[UploadFile]) -> str:
 #     reqJson = await request.form()
 #     print(reqJson)
 #     return {"done": "ok"}
-def guess_filetype(content: str, filename: str) -> str:
+def guess_filetype(content: bytes, filename: str) -> str:
     """Guesses the filetype of a file based on first the sontent, If that fails the extension in teh filename. If no conclusion can be reached it reutrns an empty string"""
     ftyp = filetype.guess(content)
     if ftyp is not None:

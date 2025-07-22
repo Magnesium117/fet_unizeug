@@ -285,7 +285,16 @@ async function submitForm(formData) {
     //let responseJSON=await response.json();
     if (response.ok) {
       console.log("Submit OK");
-      console.log(response);
+      // console.log(response);
+      // window.open(response);
+      // console.log(URL.createObjectURL(response.body));
+      // window.open(response);
+      // window.open(response, (target = "_blank"));
+      // var newWindow = window.open();
+      // newWindow.document.write(response);
+      // var blob = response.blob();
+      const blobURL = URL.createObjectURL(await response.blob());
+      window.open(blobURL, "_blank");
     } else {
       console.log("Submit failed");
     }
