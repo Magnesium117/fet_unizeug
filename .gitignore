@@ -2,3 +2,4 @@ app/venv/
 app/files/
 app/pwfile.json
 app/dest
+app.log
