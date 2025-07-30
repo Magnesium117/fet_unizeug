@@ -3,6 +3,10 @@ from typing import List, Dict, Tuple
 from annotated_types import IsDigit
 from fastapi import FastAPI, File, HTTPException, UploadFile, Request, Form
 from fastapi.responses import FileResponse
+# import multiprocessing
+# import threading
+# import concurrent.futures
+# import asyncio
 
 # import fastapi
 from fastapi.staticfiles import StaticFiles
@@ -48,6 +52,9 @@ EX_DATE_CATEGORIES = ["Prüfungen", "Klausuren"]
 EX_DATE_CATEGORIES_I = [0, 1]
 UNIZEUG_PATH = "./app/dest/"
 FILES_IN_PROGRESS = "./app/files/"
+EMPTYFILE = "./app/graphics/empty.pdf"
+UNSUPPORTEDFILE = "./app/graphics/unsupported.pdf"
+GREETINGFILE = "./app/graphics/greeting.pdf"
 
 
 # cur = db.cursor()
@@ -66,10 +73,12 @@ async def get_file(file_id: str):
     """returns the file that cooorosponds with the given ID"""
     if file_id == "unsupported":
         error("File is unsupported")
-        return FileResponse(FILES_IN_PROGRESS + "unsupported.pdf")
+        return FileResponse(UNSUPPORTEDFILE)
     if file_id == "empty":
         error("File Id empty")
-        return FileResponse(FILES_IN_PROGRESS + "empty.pdf")
+        return FileResponse(EMPTYFILE)
+    if file_id == "greeting":
+        return FileResponse(GREETINGFILE)
     cur = db.cursor()
     try:
         cur.execute("Select filename from FIP where id=?", (file_id,))
@@ -308,7 +317,7 @@ async def get_submission(
     pagescales: Annotated[
         str, Form()
     ],  # Scales of Pages  # Annotated[List[Dict[str, float]], Form()],
-    censor: Annotated[str, Form()] | bool = False,
+    censor: Annotated[str, Form()],
 ):
     """handles submission"""
     print(
@@ -333,13 +342,15 @@ async def get_submission(
     except ValueError as e:
         error(f"Error creating savepath: f{e}")
         raise HTTPException(status_code=400, detail=str(e))
-    censor_pdf(filepath, dest, rects_p, scales_p, False if censor is False else True)
+    await censor_pdf(
+        filepath, dest, rects_p, scales_p, False if censor == "False" else True
+    )
     # return {"done": "ok"}
     print(dest)
     return FileResponse(dest, content_disposition_type="inline")
 
 
-def censor_pdf(
+async def censor_pdf(
     path: str,
     destpath: str,
     rects: List[List[List[float]]],
@@ -360,10 +371,13 @@ def censor_pdf(
     doc = pymupdf.open(path)
     output = pymupdf.open()
     page = doc[0]
-    width = page.rect.width
-    height = page.rect.height
-    print(width, height)
-    for i in range(doc.page_count):
+    # width = page.rect.width
+    # height = page.rect.height
+    # print(width, height)
+    npage = doc.page_count
+    # pages = []
+    # tasks = []
+    for i in range(npage):
         page = doc[i]
         if i < len(rects) and rects[i] != []:
             print(i)
@@ -382,16 +396,51 @@ def censor_pdf(
                     fill=(0, 0, 0),
                 )
         if secure:
+            # pages.append(page)
             bitmap = page.get_pixmap(dpi=400)
             pdf_bytes = bitmap.pdfocr_tobytes(
                 language="deu",
                 tessdata="/usr/share/tessdata/",  # tesseract needs to be installed; this is the path to thetesseract files
             )
             output.insert_pdf(pymupdf.Document(stream=pdf_bytes))
-            print(f" Page {i}/{doc.page_count} CENSORING DONE")
+            # tasks.append(asyncio.create_task(censor_page(page)))
+            print(f"Page {i + 1}/{npage}: CENSORING DONE")
         else:
             output.insert_pdf(doc, i, i)
+
+    # if secure:
+    # pages_bytes: List[bytes] = []
+    # censor_page(pages[0])
+    # with multiprocessing.Pool(npage) as p:
+    # pages_bytes = p.map(censor_page, pages)
+    # pages_bytes = p.map(test_function, [1, 2, 3, 4])
+    # for pdf_bytes in pages_bytes:
+    # output.insert_pdf(pymupdf.Document(stream=pdf_bytes))
+    # with concurrent.futures.ThreadPoolExecutor() as executor:
+    #     futures = []
+    #     for page in pages:
+    #         futures.append(executor.submit(censor_page, page))
+    #     for future in futures:
+    #         output.insert_pdf(pymupdf.Document(stream=future.result()))
+    #
+    # for task in tasks:
+    # output.insert_pdf(pymupdf.Document(stream=await task))
+    # print("CENSORING DONE")
     output.save(destpath)
+
+
+def test_function(i: int) -> bytes:
+    return b"\x00\x66\x99"
+
+
+async def censor_page(page: pymupdf.Page) -> bytes:
+    bitmap = page.get_pixmap(dpi=400)
+    pdf_bytes = bitmap.pdfocr_tobytes(
+        language="deu",
+        tessdata="/usr/share/tessdata/",  # tesseract needs to be installed; this is the path to thetesseract files
+    )
+    # print(pdf_bytes)
+    return pdf_bytes
 
 
 # def save_without_censoring(dest)

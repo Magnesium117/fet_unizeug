@@ -273,6 +273,9 @@ function submitPdf(eve) {
   formdata.append("fileId", doc.fID);
   //formdata.append("filename", doc.filename);
   formdata.append("ftype", doc.filetype);
+  if (!formdata.has("censor")) {
+    formdata.append("censor", "False");
+  }
   console.log(formdata);
   submitForm(formdata);
 }
@@ -361,12 +364,13 @@ function initListeners() {
   });
 }
 const startPdf = () => {
-  doc = new PDFDocument(
-    "./files/b78c869f-e0bb-11ef-9b58-84144d05d665",
-    "b78c869f-e0bb-11ef-9b58-84144d05d665",
-    "pdf",
-  );
+  // doc = new PDFDocument(
+  //   "./files/b78c869f-e0bb-11ef-9b58-84144d05d665",
+  //   "b78c869f-e0bb-11ef-9b58-84144d05d665",
+  //   "pdf",
+  // );
   //pdf = new PDFView("./VO_Mathematik_3.pdf");
+  doc = new PDFDocument("./files/greeting", "greeting", "pdf");
   initDraw();
   initUpload();
   initListeners();

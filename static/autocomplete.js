@@ -170,9 +170,21 @@ function autocomplete(inp, type) {
     closeAllLists(e.target);
   });
 }
+function enter_current_semeseter() {
+  var semField = document.getElementById("sem");
+  var today = new Date();
+  var year = today.getFullYear();
+  var month = today.getMonth();
+  if (month < 9 && month > 1) {
+    semField.value = String(year) + "S";
+  } else {
+    semField.value = String(year) + "W";
+  }
+}
 function init() {
   autocomplete(document.getElementById("lva"), "lva");
   autocomplete(document.getElementById("prof"), "prof");
   autocomplete(document.getElementById("subcat"), "subcat");
+  enter_current_semeseter();
 }
 window.addEventListener("load", init);
