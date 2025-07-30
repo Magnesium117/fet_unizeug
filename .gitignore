@@ -3,3 +3,4 @@ app/files/
 app/pwfile.json
 app/dest
 app.log
+app/__pycache__/
