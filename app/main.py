@@ -23,15 +23,26 @@ import filetype
 import datetime
 
 import logging
+import inspect
 
 from starlette.types import HTTPExceptionHandler
 
 log = logging.getLogger(__name__)
-logging.basicConfig(filename="app.log", level=logging.INFO)
+logging.basicConfig(
+    filename="app.log",
+    level=logging.INFO,
+    format="[%(asctime)s, %(filename)s:%(lineno)s -> %(funcName)10s() ]%(levelname)s: %(message)s",
+)
 debug = log.debug
 info = log.info
 error = log.error
 
+
+def startup():
+    info("App Started")
+
+
+startup()
 app = FastAPI()
 
 app.mount("/favicon", StaticFiles(directory="./favicon"), name="favicon")
