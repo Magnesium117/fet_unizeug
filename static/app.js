@@ -288,6 +288,7 @@ async function submitForm(formData) {
     //let responseJSON=await response.json();
     if (response.ok) {
       console.log("Submit OK");
+      doc = new PDFDocument("./files/greeting", "greeting", "pdf");
       // console.log(response);
       // window.open(response);
       // console.log(URL.createObjectURL(response.body));
@@ -300,6 +301,7 @@ async function submitForm(formData) {
       window.open(blobURL, "_blank");
     } else {
       console.log("Submit failed");
+      window.alert("Error: " + (await response.json())["detail"]);
     }
   } catch (error) {
     console.error("Error" + error);
@@ -339,6 +341,7 @@ async function uploadFile(formData) {
       );
     } else {
       console.log("upload failed");
+      window.alert("Error: " + (await response.json())["detail"]);
     }
   } catch (error) {
     console.error("Error: " + error);

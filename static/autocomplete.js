@@ -8,7 +8,11 @@ function autocomplete(inp, type) {
   the text field element and an array of possible autocompleted values:*/
   var currentFocus;
   /*execute a function when someone writes in the text field:*/
-  inp.addEventListener("focus", updateAutocomplete);
+  inp.addEventListener("focus", (e) => {
+    e.target.select();
+    // this.select();
+    updateAutocomplete();
+  });
   inp.addEventListener("input", updateAutocomplete);
   async function updateAutocomplete() {
     activeAutocompletion = type;

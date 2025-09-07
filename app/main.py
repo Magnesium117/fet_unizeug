@@ -37,19 +37,20 @@ debug = log.debug
 info = log.info
 error = log.error
 
-
-def startup():
-    info("App Started")
-
-
-startup()
-app = FastAPI()
-
-app.mount("/favicon", StaticFiles(directory="./favicon"), name="favicon")
-app.mount("/static", StaticFiles(directory="./static"), name="static")
 db = mariadb.connect(
     host="localhost", user="wildserver", password="DBPassword", database="Unizeug"
 )
+
+info("App Started")
+# remove_old_FIP_entrys()
+
+
+# startup()
+app = FastAPI()
+app.mount("/favicon", StaticFiles(directory="./favicon"), name="favicon")
+app.mount("/static", StaticFiles(directory="./static"), name="static")
+
+
 CATEGORIES = [
     "Prüfungen",
     "Klausuren",
@@ -81,7 +82,8 @@ def _sql_quarry(
     cursor: mariadb.Cursor,
     querry: str,
     data: Tuple[str | int, ...] | int | str,
-    return_result,
+    return_result: bool,
+    commit: bool,
 ) -> List:
     datas: Tuple[str | int, ...]
     if type(data) is str or type(data) is int:
@@ -90,29 +92,37 @@ def _sql_quarry(
         datas = data
     try:
         cursor.execute(querry, datas)
+        if commit:
+            db.commit()
         if return_result:
             return cursor.fetchall()
         else:
             return []
     except mariadb.Error as e:
-        error(f"Mariadb Error: {e}")
+        error(f"Mariadb Error: '{e}' from Querry: '{querry}' with variables: {data}")
         raise HTTPException(
             status_code=500, detail="Somethings wrong with the database"
         )
 
 
 def sql(
-    querry: str, data: Tuple[str | int, ...] | str | int, return_result: bool = True
+    querry: str,
+    data: Tuple[str | int, ...] | str | int = (),
+    return_result: bool = True,
+    commit: bool = False,
 ) -> List[Tuple]:
     cur = db.cursor(dictionary=False)
-    return _sql_quarry(cur, querry, data, return_result)
+    return _sql_quarry(cur, querry, data, return_result, commit)
 
 
 def sqlT(
-    querry: str, data: tuple[str | int, ...] | str | int, return_result: bool = True
+    querry: str,
+    data: tuple[str | int, ...] | str | int = (),
+    return_result: bool = True,
+    commit: bool = False,
 ) -> List[Dict]:
     cur = db.cursor(dictionary=True)
-    return _sql_quarry(cur, querry, data, return_result)
+    return _sql_quarry(cur, querry, data, return_result, commit)
 
     # datas:Tuple[str|int,...]
     # if type(data) is str or type(data) is int:
@@ -340,8 +350,8 @@ async def create_upload_file(files: List[UploadFile], c2pdf: bool = True):
     # cur = db.cursor()
     # try:
     sql(
-        "INSERT INTO FIP (filename,filetype,initTimeStamp) Values(?,?,?)",
-        (filename, ft, str(datetime.datetime.now())),
+        "INSERT INTO FIP (filename,filetype,initTimeStamp) Values(?,?,NOW())",
+        (filename, ft),  # str(datetime.datetime.now())
         return_result=False,
     )
     # except mariadb.Error as e:
@@ -411,7 +421,14 @@ async def get_submission(
     res = sql("Select filename from FIP where id=?", (fileId,))
     if len(res) < 1:
         error(f"Submited file ID {fileId} dose not exist in database")
+        if fileId == "greeting":
+            raise HTTPException(400, "You need to upload a file before submitting")
         raise HTTPException(status_code=400, detail="Submited file dose not exist.")
+    for th in [(lva, "LVA"), (prof, "Prof"), (fname, "Filename"), (sem, "Semmester")]:
+        if th[0] == "":
+            error(f"User tried to upload a file without specifying the {th[1]}")
+            raise HTTPException(400, f"You need to specify a {th[1]}")
+
     filepath = "./app/files/" + res[0][0]
     # except mariadb.Error as e:
     # print(f"Mariadb Error: {e}")
@@ -422,13 +439,15 @@ async def get_submission(
     try:
         dest = make_savepath(lva, prof, stype, subcat, sem, ex_date, fname, ftype)
     except ValueError as e:
-        error(f"Error creating savepath: f{e}")
-        raise HTTPException(status_code=400, detail="Cannot create Savepath")
+        error(f"Error creating savepath: {e}")
+        raise HTTPException(status_code=400, detail=f"Error creation savepath: {e}")
     await censor_pdf(
         filepath, dest, rects_p, scales_p, False if censor == "False" else True
     )
     # return {"done": "ok"}
-    print(dest)
+    # print(dest)
+    info(f"Saved file {fileId} as {dest}")
+    delete_from_FIP(fileId)
     return FileResponse(dest, content_disposition_type="inline")
 
 
@@ -578,8 +597,17 @@ def make_savepath(
     os.makedirs(savepath, exist_ok=True)
     filename = sem + "_"
     if int(cat) in EX_DATE_CATEGORIES_I:
-        _, mm, dd = ex_date.split("-")
-        filename += mm + "_" + dd + "_"
+        try:
+            yyyy, mm, dd = ex_date.split("-")
+        except ValueError as e:
+            error(
+                f"ValueError: f{e}. Probably caused by user not specifying a date where a date is required"
+            )
+            raise HTTPException(
+                400,
+                "You have not specified a date for an upload that requires a date like an exam.",
+            )
+        filename += yyyy + "_" + mm + "_" + dd + "_"
     filename += fname + "." + ftype
     return savepath + filename
 
@@ -795,3 +823,28 @@ def guess_filetype(content: bytes, filename: str) -> str:
     if len(farr) > 1:
         return filename.split(".")[-1]
     return ""
+
+
+@app.get("/remove_old")
+async def remove_old_FIP_entrys():
+    files = sqlT(
+        "SELECT id,filename FROM FIP WHERE HOUR(TIMEDIFF(NOW(),initTimeStamp)) > 24 "
+    )
+    info(f"Remove Files: {files}")
+    for file in files:
+        sql("DELETE FROM FIP WHERE id=?", (file["id"]), return_result=False)
+        os.remove(FILES_IN_PROGRESS + file["filename"])
+    # sql(
+    #     "DELETE FROM FIP WHERE HOUR(TIMEDIFF(NOW(),initTimeStamp)) > 24",
+    #     return_result=False,
+    # )
+    db.commit()
+    return FileResponse("./index.html")
+
+
+def delete_from_FIP(uuid: str):
+    res = sqlT("SELECT filename FROM FIP WHERE id=?", (uuid,))
+    if len(res) < 1:
+        raise HTTPException(500, "I am trying to delete a file that dose not exist")
+    sql("DELETE FROM FIP WHERE id=?", (uuid,), return_result=False, commit=True)
+    os.remove(FILES_IN_PROGRESS + res[0]["filename"])
